@@ -10,7 +10,7 @@ module ShouldaContextExtensions
 
   def fast_context(name, &blk)
     @fast_subcontexts ||= []
-    @fast_subcontexts << Shoulda::FastContext.new(name, self, &blk)
+    @fast_subcontexts << Shoulda::Context::FastContext.new(name, self, &blk)
   end
 
   def build_with_fast_context
@@ -20,11 +20,11 @@ module ShouldaContextExtensions
   end
 
   def am_subcontext_with_fast_context?
-    parent.is_a?(Shoulda::Context) || parent.is_a?(Shoulda::FastContext)
+    parent.is_a?(Shoulda::Context::Context) || parent.is_a?(Shoulda::Context::FastContext)
   end
 end
 
-module Shoulda
+module Shoulda::Context
   class FastContext < Context
     def test_method_name
       joined_should_name = shoulds.collect{ |should_hash| should_hash[:name] }.join(' and ')
@@ -53,8 +53,8 @@ module Shoulda
           context.run_current_setup_blocks(self)
 
           context.shoulds.each {|should| should[:block].bind(self).call }
-        rescue Test::Unit::AssertionFailedError => e
-          error = Test::Unit::AssertionFailedError.new(["FAILED:", context.full_name, "should", "#{@current_should[:name]}:", e.message].flatten.join(' '))
+        rescue ActiveSupport::TestCase::Assertion => e
+          error = ActiveSupport::TestCase::Assertion.new(["FAILED:", context.full_name, "should", "#{@current_should[:name]}:", e.message].flatten.join(' '))
           error.set_backtrace e.backtrace
           raise error
         ensure
@@ -77,13 +77,13 @@ end
 
 class ActiveSupport::TestCase
   def self.fast_context(name, &blk)
-    if Shoulda.current_context
-      Shoulda.current_context.fast_context(name, &blk)
+    if Shoulda::Context.current_context
+      Shoulda::Context.current_context.fast_context(name, &blk)
     else
-      context = Shoulda::FastContext.new(name, self, &blk)
+      context = Shoulda::Context::FastContext.new(name, self, &blk)
       context.build
     end
-  end  
+  end
 end
 
-Shoulda::Context.send :include, ShouldaContextExtensions
+Shoulda::Context::Context.send :include, ShouldaContextExtensions
